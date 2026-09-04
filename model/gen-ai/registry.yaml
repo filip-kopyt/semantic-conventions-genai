@@ -1095,3 +1095,24 @@ attributes:
       metric dimension where the exit code itself would be unbounded.
     examples: [true]
     stability: development
+  - key: gen_ai.skills
+    type: any
+    brief: The skills whose instructions are in the operation's context, and whether each one is held in compacted form.
+    stability: development
+    annotations:
+      type:
+        json_schema: model/gen-ai/gen-ai-skills.json
+    note: |
+      One entry per skill the agent has loaded, whether during this operation or
+      an earlier one in the same conversation. Loading a skill puts its
+      instructions into the context, so this set explains much of that context's
+      size and content.
+
+      `compacted` is `true` when the skill's instructions have been replaced by a
+      summary. Unlike `gen_ai.conversation.compacted`, which is a positive
+      indicator only, this field is reported for every entry, because the set is
+      closed and instrumentations that can determine compaction for one skill can
+      determine it for all of them.
+    examples:
+      - >
+        [{"name": "code-review", "compacted": true}, {"name": "pdf-processing", "compacted": false}]

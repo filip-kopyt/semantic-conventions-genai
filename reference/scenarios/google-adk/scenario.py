@@ -437,6 +437,30 @@ def _resolved_skill_loads(events):
     return loads
 
 
+def _skills_in_context(events):
+    """The skills whose instructions are in context, and whether each is compacted.
+
+    A compaction event's `EventCompaction` (`event.actions.compaction`) declares
+    the timestamp range a summary has replaced, so a load whose response event
+    falls inside that range is in context in compacted form.
+    """
+    compacted_ranges = []
+    for event in events:
+        compaction = event.actions.compaction
+        if (
+            compaction
+            and compaction.start_timestamp is not None
+            and compaction.end_timestamp is not None
+            and compaction.compacted_content is not None
+        ):
+            compacted_ranges.append((compaction.start_timestamp, compaction.end_timestamp))
+
+    loaded = {}
+    for skill_name, event in _resolved_skill_loads(events):
+        loaded[skill_name] = any(start <= event.timestamp <= end for start, end in compacted_ranges)
+    return [{"name": name, "compacted": compacted} for name, compacted in loaded.items()]
+
+
 def run_skills_reference():
     """Scenario: Agent Skills usage via Google ADK's SkillToolset.
 
@@ -448,12 +472,12 @@ def run_skills_reference():
     tool execution is captured.
 
     The model drives every stage: each turn is one `runner.run_async`
-    invocation in which ADK's tool loop calls one skill tool. A second phase runs
+    invocation in which ADK's tool loop calls one skill tool. A final phase runs
     the same tools under a `Workflow` graph, where one invocation coordinates
     two agents and the skills it activates span both of them.
     """
     from google.adk.agents import Agent
-    from google.adk.apps.app import App
+    from google.adk.apps.app import App, EventsCompactionConfig
     from google.adk.environment import LocalEnvironment
     from google.adk.models.google_llm import Gemini
     from google.adk.runners import Runner
@@ -679,11 +703,17 @@ def run_skills_reference():
             session_service=session_service,
         )
 
-        def build_runner():
-            return Runner(
-                app=App(name="test_app", root_agent=agent),
-                session_service=session_service,
+        def build_runner(compaction_interval=None):
+            app = App(
+                name="test_app",
+                root_agent=agent,
+                events_compaction_config=(
+                    EventsCompactionConfig(compaction_interval=compaction_interval, overlap_size=0)
+                    if compaction_interval
+                    else None
+                ),
             )
+            return Runner(app=app, session_service=session_service)
 
         async def invoke(runner, session_id, prompt, tool_name=None):
             """One agent invocation, wrapped in its `invoke_agent` span.
@@ -748,7 +778,15 @@ def run_skills_reference():
                             ]
                         ),
                     )
-            after = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
+                after = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
+                # The context this invocation ran with, as ADK recorded it: every
+                # skill loaded in the session up to here, including any this
+                # invocation loaded, and whether a compaction has replaced its
+                # instructions with a summary. Read once the invocation is over so a
+                # skill it loaded itself is in the set, and set before the span ends.
+                skills_in_context = _skills_in_context(after.events)
+                if skills_in_context:
+                    agent_span.set_attribute("gen_ai.skills", json.dumps(skills_in_context))
             # Skills this invocation activated, counted once each however many times
             # the load-skill tool ran, and recorded for every invocation including
             # the ones that activated none. Counted over the events this invocation
@@ -834,7 +872,21 @@ def run_skills_reference():
             session = await session_service.create_session(app_name="test_app", user_id=user_id)
             await invoke(lifecycle_runner, session.id, "Lint it too.", "run_skill_script")
 
-            # Phase 2, a workflow. Its two agents each load their own skill, so
+            # Phase 2, compaction. One long conversation with compaction configured
+            # every third invocation: the skill loaded first falls inside a
+            # compacted range while the one loaded after it is still held in full,
+            # so the last invocation sees both states at once.
+            compacting_runner = build_runner(compaction_interval=3)
+            session = await session_service.create_session(app_name="test_app", user_id=user_id)
+            load_skill_tool.skill_names = ["code-review"]
+            await invoke(compacting_runner, session.id, "Review the pending change.", "load_skill")
+            await invoke(compacting_runner, session.id, "Summarize the first finding.")
+            await invoke(compacting_runner, session.id, "And the second one?")
+            load_skill_tool.skill_names = ["pdf-processing"]
+            await invoke(compacting_runner, session.id, "Now read the attached PDF.", "load_skill")
+            await invoke(compacting_runner, session.id, "What did both of those tell you?")
+
+            # Phase 3, a workflow. Its two agents each load their own skill, so
             # the workflow-scoped count spans loads made by more than one agent
             # while each agent-scoped count sees only its own.
             session = await session_service.create_session(app_name="test_app", user_id=user_id)

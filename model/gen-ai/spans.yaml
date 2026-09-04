@@ -582,6 +582,8 @@ spans:
         sampling_relevant: true
       - ref: gen_ai.agent.name
         sampling_relevant: true
+      - ref: gen_ai.skills
+        requirement_level: opt_in
 
   - type: gen_ai.execute_tool.internal
     requirement_level: recommended
