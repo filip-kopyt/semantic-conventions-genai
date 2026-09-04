@@ -231,8 +231,6 @@ async def run_skills():
     enable_sensitive_telemetry(force=True)
     activated: list[str] = []
 
-    activated: list[str] = []
-
     def run_script(skill, script, args=None):
         """Application-supplied runner for file-based skill scripts.
 
