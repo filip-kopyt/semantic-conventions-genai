@@ -1081,4 +1081,11 @@ on those attributes rather than on any framework's tool names:
 same name may be served by different sources, so `gen_ai.skill.source.uri` is what
 identifies a skill unambiguously across a fleet.
 
+The corresponding metrics are described in
+[Generative AI skill metrics](./gen-ai-metrics.md#generative-ai-skill-metrics).
+They count loads and script runs, and report how many distinct skills a single
+[agent](#invoke-agent-internal-span) or [workflow](#invoke-workflow-span)
+invocation needed — a workflow whose agents each load a different skill counts
+more than any one of them does.
+
 [DocumentStatus]: https://opentelemetry.io/docs/specs/otel/document-status

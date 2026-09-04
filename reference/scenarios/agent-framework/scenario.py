@@ -8,7 +8,7 @@ import sys
 from typing import Annotated
 
 from opentelemetry import trace
-from reference_shared import flush_and_shutdown, setup_otel
+from reference_shared import flush_and_shutdown, reference_meter, setup_otel
 
 MOCK_BASE_URL = os.environ["MOCK_LLM_URL"] + "/v1"
 SKILLS_DIR = pathlib.Path(__file__).parent / "skills"
@@ -24,6 +24,24 @@ SKILL_TOOL_ENUMS = {
         "script_name": ["scripts/run_checks.py"],
     },
 }
+
+_reference_meter = reference_meter()
+
+_skill_loads = _reference_meter.create_counter(
+    "gen_ai.skill.loads",
+    unit="{load}",
+    description="The number of times a skill was loaded.",
+)
+_invoke_agent_skill_loads = _reference_meter.create_histogram(
+    "gen_ai.invoke_agent.skill.loads",
+    unit="{skill}",
+    description="The number of skills a GenAI agent activates during a single invocation.",
+)
+_skill_script_executions = _reference_meter.create_counter(
+    "gen_ai.skill.script.executions",
+    unit="{execution}",
+    description="The number of times a skill's script was executed.",
+)
 
 
 async def run_agent_tool_call():
@@ -212,6 +230,8 @@ async def run_skills():
 
     enable_sensitive_telemetry(force=True)
 
+    activated: set[str] = set()
+
     def run_script(skill, script, args=None):
         """Application-supplied runner for file-based skill scripts.
 
@@ -263,7 +283,22 @@ async def run_skills():
                     if tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME:
                         # `direct`: the script path is a call argument.
                         span.set_attribute("gen_ai.skill.script.path", kwargs["script_name"])
-                    return await func(**kwargs)
+                    result = await func(**kwargs)
+                    # The span carries the name the call asked for either way; the
+                    # metrics take it only once the provider has resolved it to a
+                    # skill, so a name the model invented cannot enter the dimension.
+                    attributes = {"gen_ai.agent.name": "SkillAgent"}
+                    if skill is not None:
+                        attributes["gen_ai.skill.name"] = skill_name
+                    if tool_name == SkillsProvider.LOAD_SKILL_TOOL_NAME:
+                        if skill is not None:
+                            activated.add(skill_name)
+                        _skill_loads.add(1, attributes)
+                    if tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME:
+                        if skill is not None and skill.get_script(kwargs["script_name"]) is not None:
+                            attributes["gen_ai.skill.script.path"] = kwargs["script_name"]
+                        _skill_script_executions.add(1, attributes)
+                    return result
 
                 return wrapper
 
@@ -299,6 +334,7 @@ async def run_skills():
     ]
     for prompt, stage_tool in stages:
         provider.stage_tool = stage_tool
+        activated.clear()
         async with Agent(
             client=OpenAIChatClient(model="gpt-4o-mini", base_url=MOCK_BASE_URL, api_key="mock-key"),
             id="skill-agent",
@@ -309,6 +345,8 @@ async def run_skills():
         ) as agent:
             result = await agent.run(prompt)
             print(f"    -> {result.text[:60]}")
+        # Skills this invocation activated, counted once each.
+        _invoke_agent_skill_loads.record(len(activated), {"gen_ai.agent.name": "SkillAgent"})
 
 
 def main():

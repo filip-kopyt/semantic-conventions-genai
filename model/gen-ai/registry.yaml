@@ -1087,3 +1087,11 @@ attributes:
     brief: The exit code the skill script terminated with.
     examples: [0, 1, 10, 128]
     stability: development
+  - key: gen_ai.skill.script.exited_with_error
+    type: boolean
+    brief: Whether the skill script terminated with a non-zero exit code.
+    note: >
+      A low-cardinality companion to `gen_ai.skill.script.exit_code`, for use as a
+      metric dimension where the exit code itself would be unbounded.
+    examples: [true]
+    stability: development
