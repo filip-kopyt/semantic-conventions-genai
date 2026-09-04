@@ -457,13 +457,14 @@ def run_skills_reference():
                     if skill._uri is not None:
                         span.set_attribute("gen_ai.skill.source.uri", skill._uri)
                 result = await super().run_async(args=args, tool_context=tool_context)
-                span.set_attribute("gen_ai.tool.call.result", json.dumps(result, default=str))
                 # `direct`: every skill tool reports a failure as an `error_code` on
                 # its result, which is the value ADK's own telemetry hook reads too.
                 error_type = result.get("error_code") if isinstance(result, dict) else None
                 if error_type:
                     span.set_attribute("error.type", error_type)
                     span.set_status(StatusCode.ERROR, result.get("error", ""))
+                else:
+                    span.set_attribute("gen_ai.tool.call.result", json.dumps(result, default=str))
                 self._record_skill_signals(span, args, result, error_type, tool_context)
                 return result
 
