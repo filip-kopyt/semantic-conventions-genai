@@ -1186,7 +1186,11 @@ Instrumentations SHOULD document the list of errors they report.
 
 **[6] `gen_ai.skill.description`:** If the call resolves to a skill and the description is available.
 
-**[7] `gen_ai.skill.description`:** This is the `description` field of the skill's `SKILL.md` frontmatter — the text the agent matches a task against when deciding to load the skill.
+**[7] `gen_ai.skill.description`:** This is the `description` field of the skill's `SKILL.md` frontmatter — the
+text the agent matches a task against when deciding to load the skill.
+
+> [!Warning]
+> This attribute may contain sensitive information.
 
 **[8] `gen_ai.skill.script.exit_code`:** If the tool ran a skill script and reports the code it exited with.
 

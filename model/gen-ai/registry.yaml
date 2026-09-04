@@ -1052,9 +1052,12 @@ attributes:
   - key: gen_ai.skill.description
     type: string
     brief: The description of the skill, stating what it does and when to use it.
-    note: >
+    note: |
       This is the `description` field of the skill's `SKILL.md` frontmatter — the
       text the agent matches a task against when deciding to load the skill.
+
+      > [!Warning]
+      > This attribute may contain sensitive information.
     examples: ["Review a changelist against the team's review policy."]
     stability: development
   - key: gen_ai.skill.source.uri
