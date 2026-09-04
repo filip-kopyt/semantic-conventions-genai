@@ -258,7 +258,11 @@ When the attribute is recorded on events, it MUST be recorded in structured form
 > [!Warning]
 > This attribute may contain sensitive information.
 
-**[26] `gen_ai.skill.description`:** This is the `description` field of the skill's `SKILL.md` frontmatter — the text the agent matches a task against when deciding to load the skill.
+**[26] `gen_ai.skill.description`:** This is the `description` field of the skill's `SKILL.md` frontmatter — the
+text the agent matches a task against when deciding to load the skill.
+
+> [!Warning]
+> This attribute may contain sensitive information.
 
 **[27] `gen_ai.skill.name`:** The name the call asked for, recorded whether or not it resolves to a skill. Where it resolves, this is the `name` field of that skill's `SKILL.md` frontmatter, which the specification requires to be unique within the set of skills available to the agent.
 
