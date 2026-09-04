@@ -1060,6 +1060,11 @@ attributes:
   - key: gen_ai.skill.source.uri
     type: string
     brief: The [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986) URI identifying the skill and where it was retrieved from.
+    note: |
+      Sensitive URI components, such as userinfo and access tokens in query parameters, SHOULD be scrubbed when instrumentations can identify them.
+
+      > [!Warning]
+      > This attribute may contain sensitive information.
     examples:
       ["https://skills.example.com/code-review", "gs://example-skills/code-review", "file:///opt/skills/code-review"]
     stability: development
