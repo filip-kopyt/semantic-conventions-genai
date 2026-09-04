@@ -229,8 +229,7 @@ async def run_skills():
     print("  [skills] SkillsProvider skill lifecycle (reference implementation)")
 
     enable_sensitive_telemetry(force=True)
-
-    activated: set[str] = set()
+    activated: list[str] = []
 
     def run_script(skill, script, args=None):
         """Application-supplied runner for file-based skill scripts.
@@ -292,7 +291,7 @@ async def run_skills():
                         attributes["gen_ai.skill.name"] = skill_name
                     if tool_name == SkillsProvider.LOAD_SKILL_TOOL_NAME:
                         if skill is not None:
-                            activated.add(skill_name)
+                            activated.append(skill_name)
                         _skill_loads.add(1, attributes)
                     if tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME:
                         if skill is not None and skill.get_script(kwargs["script_name"]) is not None:
@@ -345,7 +344,7 @@ async def run_skills():
         ) as agent:
             result = await agent.run(prompt)
             print(f"    -> {result.text[:60]}")
-        # Skills this invocation activated, counted once each.
+        # Skills this invocation activated
         _invoke_agent_skill_loads.record(len(activated), {"gen_ai.agent.name": "SkillAgent"})
 
 

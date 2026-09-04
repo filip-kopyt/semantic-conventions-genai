@@ -787,11 +787,8 @@ def run_skills_reference():
                 skills_in_context = _skills_in_context(after.events)
                 if skills_in_context:
                     agent_span.set_attribute("gen_ai.skills", json.dumps(skills_in_context))
-            # Skills this invocation activated, counted once each however many times
-            # the load-skill tool ran, and recorded for every invocation including
-            # the ones that activated none. Counted over the events this invocation
-            # appended, so a skill an earlier invocation already loaded still counts.
-            activated = {name for name, _ in _resolved_skill_loads(after.events[events_before:])}
+            # Skills this invocation activated
+            activated = [name for name, _ in _resolved_skill_loads(after.events[events_before:])]
             _invoke_agent_skill_loads.record(len(activated), {"gen_ai.agent.name": agent_name})
 
         async def invoke_graph(session_id, prompt):
@@ -838,9 +835,8 @@ def run_skills_reference():
                         ),
                     )
             after = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
-            # Skills the workflow activated, counted once each however many of
-            # its agents loaded them, over the events this invocation appended.
-            activated = {name for name, _ in _resolved_skill_loads(after.events[events_before:])}
+            # Skills the workflow activated
+            activated = [name for name, _ in _resolved_skill_loads(after.events[events_before:])]
             _invoke_workflow_skill_loads.record(len(activated), {"gen_ai.workflow.name": workflow.name})
 
         async def _phases():
