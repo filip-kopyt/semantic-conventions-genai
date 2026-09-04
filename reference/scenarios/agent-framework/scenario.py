@@ -229,7 +229,6 @@ async def run_skills():
     print("  [skills] SkillsProvider skill lifecycle (reference implementation)")
 
     enable_sensitive_telemetry(force=True)
-
     activated: list[str] = []
 
     def run_script(skill, script, args=None):
