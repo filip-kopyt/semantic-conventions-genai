@@ -1180,8 +1180,7 @@ skill lifecycle maps onto spans.
 
 The first two are recorded per tool execution and say which skills an agent uses
 and how those uses turn out. The last two are recorded per invocation and say how
-many distinct skills one invocation pulled into its context; a skill loaded twice
-in an invocation counts twice in the former and once in the latter.
+many skills one invocation pulled into its context.
 
 Individual systems may include additional system-specific attributes.
 It is recommended to check system-specific documentation, if available.
@@ -1319,10 +1318,6 @@ Instrumentations SHOULD document the list of errors they report.
 SHOULD be recorded for every invocation, including one that ended in an
 error.
 
-Each skill counts once however many times the invocation loaded it, so
-this is not the per-invocation total of `gen_ai.skill.loads`, and the
-distribution it reports cannot be derived from that counter.
-
 This metric SHOULD be emitted together with the
 `gen_ai.invoke_agent.internal` span for the same invocation.
 
@@ -1352,10 +1347,6 @@ This metric SHOULD be emitted together with the
 **[1]:** The distribution is scoped to a single workflow invocation.
 A sample SHOULD be recorded for every workflow
 invocation, including one that ended in an error.
-
-A workflow counts each skill once across every agent it coordinates, so a
-workflow whose agents each activate a different skill reports more than
-any one of those agents does.
 
 This metric SHOULD be emitted together with the
 `gen_ai.invoke_workflow.internal` span for the same invocation.

@@ -322,10 +322,6 @@ metrics:
       SHOULD be recorded for every invocation, including one that ended in an
       error.
 
-      Each skill counts once however many times the invocation loaded it, so
-      this is not the per-invocation total of `gen_ai.skill.loads`, and the
-      distribution it reports cannot be derived from that counter.
-
       This metric SHOULD be emitted together with the
       `gen_ai.invoke_agent.internal` span for the same invocation.
     instrument: histogram
@@ -345,10 +341,6 @@ metrics:
       The distribution is scoped to a single workflow invocation.
       A sample SHOULD be recorded for every workflow
       invocation, including one that ended in an error.
-
-      A workflow counts each skill once across every agent it coordinates, so a
-      workflow whose agents each activate a different skill reports more than
-      any one of those agents does.
 
       This metric SHOULD be emitted together with the
       `gen_ai.invoke_workflow.internal` span for the same invocation.

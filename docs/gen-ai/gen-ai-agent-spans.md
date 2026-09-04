@@ -1093,9 +1093,11 @@ on those attributes rather than on any framework's tool names:
 | Read a bundled resource | the above, plus `gen_ai.skill.resource.path` |
 | Run a bundled script | the above, plus `gen_ai.skill.script.path` and `gen_ai.skill.script.exit_code` |
 
-`gen_ai.skill.name` is unique among the skills available to one agent, but the
-same name may be served by different sources, so `gen_ai.skill.source.uri` is what
-identifies a skill unambiguously across a fleet.
+The corresponding metrics are described in
+[Generative AI skill metrics](./gen-ai-metrics.md#generative-ai-skill-metrics).
+They count loads and script runs, and report how many skills a single
+[agent](#invoke-agent-internal-span) or [workflow](#invoke-workflow-span)
+invocation needed.
 
 A skill's instructions stay in the context after the load that put them there,
 so they explain much of that context's size and content for every later
