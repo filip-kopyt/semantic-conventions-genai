@@ -292,7 +292,7 @@ async def run_skills():
                         attributes["gen_ai.skill.name"] = skill_name
                     if tool_name == SkillsProvider.LOAD_SKILL_TOOL_NAME:
                         if skill is not None:
-                            activated.addend(skill_name)
+                            activated.append(skill_name)
                         _skill_loads.add(1, attributes)
                     if tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME:
                         if skill is not None and skill.get_script(kwargs["script_name"]) is not None:
