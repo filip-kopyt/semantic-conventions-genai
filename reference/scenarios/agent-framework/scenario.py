@@ -259,8 +259,6 @@ async def run_skills():
         stage_tool: str | None = None
 
         def _create_tools(self, skills):
-            skills_by_name = {skill.frontmatter.name: skill for skill in skills}
-
             def instrument(tool_name, func):
                 async def wrapper(**kwargs):
                     span = trace.get_current_span()
