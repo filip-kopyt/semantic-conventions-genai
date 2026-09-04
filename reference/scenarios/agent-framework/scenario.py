@@ -271,7 +271,7 @@ async def run_skills():
                     # `direct`: the provider resolved the skills for this run, so
                     # each one's frontmatter and the folder it was read from are
                     # in hand before the call runs.
-                    skill = skills_by_name.get(skill_name)
+                    skill = self._find_skill(skills, skill_name) if isinstance(skill_name, str) else None
                     if skill is not None:
                         span.set_attribute("gen_ai.skill.description", skill.frontmatter.description)
                         span.set_attribute("gen_ai.skill.source.uri", pathlib.Path(skill.path).as_uri())
