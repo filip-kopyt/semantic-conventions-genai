@@ -21,6 +21,11 @@ from reference_shared import (
 
 MOCK_BASE_URL = os.environ["MOCK_LLM_URL"]
 SKILLS_DIR = pathlib.Path(__file__).parent / "skills"
+# The `error_code` values ADK returns when a skill tool call named something that
+# does not exist. They say which of the call's arguments failed to resolve, which
+# is what decides whether that argument may become a metric dimension.
+SKILL_UNRESOLVED = frozenset({"SKILL_NOT_FOUND", "REGISTRY_ERROR", "INVALID_ARGUMENTS"})
+SCRIPT_UNRESOLVED = frozenset({"SCRIPT_NOT_FOUND", "SCRIPT_NOT_FOUND_FATAL"})
 
 _reference_tracer = reference_tracer()
 _reference_meter = reference_meter()
@@ -34,6 +39,26 @@ _tool_calls = _reference_meter.create_histogram(
     "gen_ai.invoke_agent.tool_calls",
     unit="{tool_call}",
     description="The number of tool calls a GenAI agent makes during a single invocation.",
+)
+_skill_loads = _reference_meter.create_counter(
+    "gen_ai.skill.loads",
+    unit="{load}",
+    description="The number of times a skill was loaded.",
+)
+_invoke_agent_skill_loads = _reference_meter.create_histogram(
+    "gen_ai.invoke_agent.skill.loads",
+    unit="{skill}",
+    description="The number of skills a GenAI agent activates during a single invocation.",
+)
+_invoke_workflow_skill_loads = _reference_meter.create_histogram(
+    "gen_ai.invoke_workflow.skill.loads",
+    unit="{skill}",
+    description="The number of skills activated during a single workflow invocation.",
+)
+_skill_script_executions = _reference_meter.create_counter(
+    "gen_ai.skill.script.executions",
+    unit="{execution}",
+    description="The number of times a skill's script was executed.",
 )
 
 
@@ -384,6 +409,34 @@ def run_memory_reference():
     asyncio.run(_run())
 
 
+def _resolved_skill_loads(events):
+    """The skills `load_skill` put into context over `events`, with their events.
+
+    Reads ADK session state only. A `load_skill` function call names the skill;
+    its function response says whether the name resolved. A call that resolved
+    to nothing put no instructions into the context, so it is not a load.
+    """
+    skill_name_by_call_id = {}
+    loads = []
+    for event in events:
+        parts = event.content.parts if event.content and event.content.parts else []
+        for part in parts:
+            call = part.function_call
+            if call and call.name == "load_skill" and call.id:
+                skill_name_by_call_id[call.id] = (call.args or {}).get("skill_name")
+            response = part.function_response
+            if not response or response.name != "load_skill":
+                continue
+            skill_name = skill_name_by_call_id.get(response.id)
+            payload = response.response or {}
+            if not skill_name or payload.get("error_code"):
+                # The call named a skill that did not resolve, so no instructions
+                # entered the context and there is nothing to report here.
+                continue
+            loads.append((skill_name, event))
+    return loads
+
+
 def run_skills_reference():
     """Scenario: Agent Skills usage via Google ADK's SkillToolset.
 
@@ -395,7 +448,9 @@ def run_skills_reference():
     tool execution is captured.
 
     The model drives every stage: each turn is one `runner.run_async`
-    invocation in which ADK's tool loop calls one skill tool.
+    invocation in which ADK's tool loop calls one skill tool. A second phase runs
+    the same tools under a `Workflow` graph, where one invocation coordinates
+    two agents and the skills it activates span both of them.
     """
     from google.adk.agents import Agent
     from google.adk.apps.app import App
@@ -406,6 +461,7 @@ def run_skills_reference():
     from google.adk.skills import load_skill_from_dir
     from google.adk.tools import skill_toolset as adk_skill_toolset
     from google.adk.tools.skill_toolset import SkillToolset
+    from google.adk.workflow import START, Workflow
     from google.genai import types
 
     print("  [skills] ADK Agent Skills toolset (reference implementation)")
@@ -418,7 +474,7 @@ def run_skills_reference():
     # `direct`: the application hands each skill folder to `load_skill_from_dir`,
     # so the load boundary owns the location the skill came from, and ADK records
     # it on the `Skill` it returns as `_uri`.
-    skills = [load_skill_from_dir((SKILLS_DIR / name).resolve()) for name in ("code-review",)]
+    skills = [load_skill_from_dir((SKILLS_DIR / name).resolve()) for name in ("code-review", "pdf-processing")]
     skills_by_name = {skill.name: skill for skill in skills}
 
     class _TracedSkillTool:
@@ -468,7 +524,7 @@ def run_skills_reference():
                 return result
 
         def _record_skill_signals(self, span, args, result, error_type, tool_context):
-            """Hook for the per-tool skill attributes."""
+            """Hook for the per-tool skill attributes and metrics."""
 
     def _with_enum(declaration, **enums):
         """Narrows declared parameters to the values that exist.
@@ -494,6 +550,19 @@ def run_skills_reference():
 
         def _get_declaration(self):
             return _with_enum(super()._get_declaration(), skill_name=self.skill_names)
+
+        def _record_skill_signals(self, span, args, result, error_type, tool_context):
+            # `direct`: ADK names the agent whose turn ran the tool on the call's
+            # context, so the dimension holds for a sub-agent of a workflow too.
+            attributes = {"gen_ai.agent.name": tool_context.agent_name}
+            if error_type:
+                attributes["error.type"] = error_type
+            # The span carries the name the call asked for either way; the metric
+            # takes it only once ADK has resolved it to a skill, so a name the
+            # model invented cannot enter the dimension.
+            if error_type not in SKILL_UNRESOLVED:
+                attributes["gen_ai.skill.name"] = args["skill_name"]
+            _skill_loads.add(1, attributes)
 
     class _LoadSkillResourceTool(_TracedSkillTool, adk_skill_toolset.LoadSkillResourceTool):
         def __init__(self, toolset, skill_names, resource_paths):
@@ -529,12 +598,26 @@ def run_skills_reference():
 
         def _record_skill_signals(self, span, args, result, error_type, tool_context):
             # `direct`: the script path is a call argument.
-            span.set_attribute("gen_ai.skill.script.path", args["file_path"])
+            script_path = args["file_path"]
+            span.set_attribute("gen_ai.skill.script.path", script_path)
+            attributes = {"gen_ai.agent.name": tool_context.agent_name}
+            if error_type:
+                attributes["error.type"] = error_type
+            # As above: each argument becomes a metric dimension only once ADK has
+            # resolved it. A script that was never found leaves the skill resolved,
+            # so the name stays and only the path drops out.
+            if error_type not in SKILL_UNRESOLVED:
+                attributes["gen_ai.skill.name"] = args["skill_name"]
+            if error_type not in SCRIPT_UNRESOLVED:
+                attributes["gen_ai.skill.script.path"] = script_path
             # `direct`: the environment reports the status the script exited with.
             # Absent when the tool failed before running anything.
             exit_code = result.get("exit_code") if isinstance(result, dict) else None
             if exit_code is not None:
                 span.set_attribute("gen_ai.skill.script.exit_code", exit_code)
+                # `derivable`: the low-cardinality form of the exit code above.
+                attributes["gen_ai.skill.script.exited_with_error"] = exit_code != 0
+            _skill_script_executions.add(1, attributes)
 
     with _suppress_adk_native_telemetry():
         # An explicit workspace, so the path the skills are materialized under is
@@ -565,6 +648,37 @@ def run_skills_reference():
         )
         session_service = InMemorySessionService()
 
+        # A two-agent graph for the workflow phase. Each agent holds its own
+        # toolset carrying one skill and exposing only `load_skill`, so the
+        # skills a workflow invocation activates span more than one agent.
+        reviewer_toolset = SkillToolset([skills_by_name["code-review"]], environment=environment)
+        reviewer_toolset._tools = [_LoadSkillTool(reviewer_toolset, ["code-review"])]
+        reporter_toolset = SkillToolset([skills_by_name["pdf-processing"]], environment=environment)
+        reporter_toolset._tools = [_LoadSkillTool(reporter_toolset, ["pdf-processing"])]
+        reviewer_agent = Agent(
+            name="reviewer_agent",
+            model=Gemini(model=request_model, base_url=MOCK_BASE_URL),
+            instruction="You review code changes.",
+            tools=[reviewer_toolset],
+        )
+        reporter_agent = Agent(
+            name="reporter_agent",
+            model=Gemini(model=request_model, base_url=MOCK_BASE_URL),
+            instruction="You turn a review into a report.",
+            tools=[reporter_toolset],
+        )
+        # `Workflow` is ADK's graph primitive, and `edges` is how it is defined:
+        # the review agent runs from the entry point, the reporting agent after it.
+        workflow = Workflow(
+            name="code_review_workflow",
+            description="Reviews a pending change, then reports on it.",
+            edges=[(START, reviewer_agent), (reviewer_agent, reporter_agent)],
+        )
+        workflow_runner = Runner(
+            app=App(name="test_app", root_agent=workflow),
+            session_service=session_service,
+        )
+
         def build_runner():
             return Runner(
                 app=App(name="test_app", root_agent=agent),
@@ -581,6 +695,8 @@ def run_skills_reference():
             empty list, which ADK reads as *no filter* and would expose all four.
             """
             toolset.tool_filter = [tool_name] if tool_name else lambda tool, readonly_context=None: False
+            before = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
+            events_before = len(before.events)
             agent_span_attributes = {
                 "gen_ai.operation.name": "invoke_agent",
                 "gen_ai.request.model": request_model,
@@ -632,10 +748,62 @@ def run_skills_reference():
                             ]
                         ),
                     )
+            after = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
+            # Skills this invocation activated
+            activated = [name for name, _ in _resolved_skill_loads(after.events[events_before:])]
+            _invoke_agent_skill_loads.record(len(activated), {"gen_ai.agent.name": agent_name})
+
+        async def invoke_graph(session_id, prompt):
+            """One workflow invocation, wrapped in its `invoke_workflow` span.
+
+            One `runner.run_async` over a `Workflow` runs every node of the
+            graph, so the call coordinates both agents rather than being a
+            standalone agent run — the boundary the workflow span is for.
+            """
+            before = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
+            events_before = len(before.events)
+            with _reference_tracer.start_as_current_span(
+                f"invoke_workflow {workflow.name}",
+                attributes={"gen_ai.operation.name": "invoke_workflow"},
+            ) as workflow_span:
+                workflow_span.set_attribute("gen_ai.workflow.name", workflow.name)
+                workflow_span.set_attribute("gen_ai.conversation.id", session_id)
+                workflow_span.set_attribute(
+                    "gen_ai.input.messages",
+                    json.dumps([{"role": "user", "parts": [{"type": "text", "content": prompt}]}]),
+                )
+                finish_reason = None
+                last_text = ""
+                async for event in workflow_runner.run_async(
+                    user_id=user_id,
+                    session_id=session_id,
+                    new_message=types.Content(role="user", parts=[types.Part(text=prompt)]),
+                ):
+                    if getattr(event, "finish_reason", None) is not None:
+                        finish_reason = getattr(event.finish_reason, "value", event.finish_reason)
+                    if event.content and event.content.parts and event.content.parts[0].text:
+                        last_text = event.content.parts[0].text
+                if last_text:
+                    workflow_span.set_attribute(
+                        "gen_ai.output.messages",
+                        json.dumps(
+                            [
+                                {
+                                    "role": "assistant",
+                                    "parts": [{"type": "text", "content": last_text}],
+                                    "finish_reason": str(finish_reason or "stop").lower(),
+                                }
+                            ]
+                        ),
+                    )
+            after = await session_service.get_session(app_name="test_app", user_id=user_id, session_id=session_id)
+            # Skills the workflow activated
+            activated = [name for name, _ in _resolved_skill_loads(after.events[events_before:])]
+            _invoke_workflow_skill_loads.record(len(activated), {"gen_ai.workflow.name": workflow.name})
 
         async def _phases():
-            # The skill lifecycle. Each stage is its own conversation, so each
-            # turn is a first turn and the model reaches for the stage's tool.
+            # Phase 1, the skill lifecycle. Each stage is its own conversation, so
+            # each turn is a first turn and the model reaches for the stage's tool.
             lifecycle_runner = build_runner()
             stages = [
                 ("What can you help me with?", "list_skills"),
@@ -649,7 +817,7 @@ def run_skills_reference():
 
             # A model can also name a skill that does not exist. No skill resolves,
             # so the span carries the name the call asked for and the failure, and
-            # nothing else about a skill.
+            # nothing else about a skill. The load is still counted.
             load_skill_tool.skill_names = ["ocr-tables"]
             session = await session_service.create_session(app_name="test_app", user_id=user_id)
             await invoke(lifecycle_runner, session.id, "Extract the tables from this PDF.", "load_skill")
@@ -662,6 +830,10 @@ def run_skills_reference():
             session = await session_service.create_session(app_name="test_app", user_id=user_id)
             await invoke(lifecycle_runner, session.id, "Lint it too.", "run_skill_script")
 
+            # Phase 2, a workflow
+            session = await session_service.create_session(app_name="test_app", user_id=user_id)
+            await invoke_graph(session.id, "Review the pending change and report on it.")
+
         async def _run():
             try:
                 await _phases()
@@ -670,6 +842,8 @@ def run_skills_reference():
                 # only a workspace it created itself, so the explicit one above is
                 # the scenario's to remove.
                 await toolset.close()
+                await reviewer_toolset.close()
+                await reporter_toolset.close()
 
         try:
             asyncio.run(_run())
