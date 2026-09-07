@@ -216,9 +216,10 @@ async def run_skills():
         """Application-supplied runner for file-based skill scripts.
 
         Agent Framework hands file-based script execution to the caller and takes
-        back whatever it returns, so the process outcome — an exit code — is the
+        back whatever it returns, so the process the script runs in is the
         application's to define and is not in the framework's contract.
-        `gen_ai.skill.script.exit_code` is therefore not capturable here.
+        `process.exit.code` and `process.executable.*` are therefore not
+        capturable here.
         """
         completed = subprocess.run(
             [sys.executable, str(pathlib.Path(skill.path) / script.name)],
@@ -254,13 +255,22 @@ async def run_skills():
                     if skill is not None:
                         span.set_attribute("gen_ai.skill.description", skill.frontmatter.description)
                         span.set_attribute("gen_ai.skill.source.uri", pathlib.Path(skill.path).as_uri())
-                    if tool_name == SkillsProvider.READ_SKILL_RESOURCE_TOOL_NAME:
-                        # `direct`: the resource path is a call argument, and the
-                        # provider names resources by their path within the skill.
-                        span.set_attribute("gen_ai.skill.resource.path", kwargs["resource_name"])
-                    if tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME:
-                        # `direct`: the script path is a call argument.
-                        span.set_attribute("gen_ai.skill.script.path", kwargs["script_name"])
+                    # `direct`: the resource the call names is a call argument,
+                    # and the provider names resources and scripts by their path
+                    # within the skill. `load_skill` names none.
+                    resource_name = kwargs.get("resource_name") or kwargs.get("script_name")
+                    if resource_name:
+                        span.set_attribute("gen_ai.skill.resource.name", resource_name)
+                    # The framework names the span `execute_tool {tool}`; the skill
+                    # refinements qualify it with what the call operates on. Only
+                    # `read_skill_resource` and `run_skill_script` name a resource,
+                    # and the skill name is never appended without one.
+                    if tool_name == SkillsProvider.LOAD_SKILL_TOOL_NAME:
+                        if skill_name:
+                            span.update_name(f"execute_tool {tool_name} {skill_name}")
+                    elif resource_name:
+                        parts = ("execute_tool", tool_name, skill_name, resource_name)
+                        span.update_name(" ".join(p for p in parts if p))
                     return await func(**kwargs)
 
                 return wrapper
