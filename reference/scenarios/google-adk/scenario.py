@@ -429,26 +429,37 @@ def run_skills_reference():
         library call and nothing of the scenario around it.
         """
 
+        def _span_name(self, skill_name, resource_name):
+            """The generic `execute_tool` name; a refined tool qualifies it."""
+            return f"execute_tool {self.name}"
+
         async def run_async(self, *, args, tool_context):
+            # `direct`: the model's function call names the skill it operates on.
+            # It is set even when no skill resolves, which is what makes a name
+            # the model invented visible.
+            skill_name = args.get("skill_name")
+            # `direct`: both `load_skill_resource` and `run_skill_script` name the
+            # skill-relative resource they act on with `file_path`; the other skill
+            # tools take none.
+            resource_name = args.get("file_path")
+            attributes = {
+                "gen_ai.operation.name": "execute_tool",
+                "gen_ai.tool.name": self.name,
+                "gen_ai.tool.type": "function",
+            }
+            if skill_name:
+                attributes["gen_ai.skill.name"] = skill_name
+            if resource_name:
+                attributes["gen_ai.skill.resource.name"] = resource_name
             with _reference_tracer.start_as_current_span(
-                f"execute_tool {self.name}",
-                attributes={
-                    "gen_ai.operation.name": "execute_tool",
-                    "gen_ai.tool.name": self.name,
-                    "gen_ai.tool.type": "function",
-                },
+                self._span_name(skill_name, resource_name),
+                attributes=attributes,
             ) as span:
                 span.set_attribute("gen_ai.tool.description", self.description)
                 span.set_attribute("gen_ai.agent.name", tool_context.agent_name)
                 if tool_context.function_call_id:
                     span.set_attribute("gen_ai.tool.call.id", tool_context.function_call_id)
                 span.set_attribute("gen_ai.tool.call.arguments", json.dumps(args))
-                # `direct`: the model's function call names the skill it operates on.
-                # It is set even when no skill resolves, which is what makes a name
-                # the model invented visible.
-                skill_name = args.get("skill_name")
-                if skill_name:
-                    span.set_attribute("gen_ai.skill.name", skill_name)
                 # `direct`: the toolset holds the `Skill` the call names, so its
                 # frontmatter and the location ADK loaded it from are in hand.
                 skill = skills_by_name.get(skill_name)
@@ -471,6 +482,15 @@ def run_skills_reference():
         def _record_skill_signals(self, span, args, result, error_type, tool_context):
             """Hook for the per-tool skill attributes."""
 
+    def _resource_span_name(tool_name, skill_name, resource_name):
+        """The name a call acting on a skill resource takes.
+
+        Shared by the read-skill-resource and command refinements: the skill name
+        is only appended alongside a resource, never by itself.
+        """
+        parts = ("execute_tool", tool_name, skill_name, resource_name) if resource_name else ("execute_tool", tool_name)
+        return " ".join(part for part in parts if part)
+
     def _with_enum(declaration, **enums):
         """Narrows declared parameters to the values that exist.
 
@@ -489,6 +509,8 @@ def run_skills_reference():
         """Discovery. Operates on no single skill, so it carries no `gen_ai.skill.*`."""
 
     class _LoadSkillTool(_TracedSkillTool, adk_skill_toolset.LoadSkillTool):
+        """Load skill: the skill the call loads qualifies the span name."""
+
         def __init__(self, toolset, skill_names):
             super().__init__(toolset)
             self.skill_names = skill_names
@@ -496,7 +518,13 @@ def run_skills_reference():
         def _get_declaration(self):
             return _with_enum(super()._get_declaration(), skill_name=self.skill_names)
 
+        def _span_name(self, skill_name, resource_name):
+            base = f"execute_tool {self.name}"
+            return f"{base} {skill_name}" if skill_name else base
+
     class _LoadSkillResourceTool(_TracedSkillTool, adk_skill_toolset.LoadSkillResourceTool):
+        """Read skill resource: the resource the call reads qualifies the span name."""
+
         def __init__(self, toolset, skill_names, resource_paths):
             super().__init__(toolset)
             self.skill_names = skill_names
@@ -509,11 +537,12 @@ def run_skills_reference():
                 file_path=self.resource_paths,
             )
 
-        def _record_skill_signals(self, span, args, result, error_type, tool_context):
-            # `direct`: the resource path is a call argument.
-            span.set_attribute("gen_ai.skill.resource.path", args["file_path"])
+        def _span_name(self, skill_name, resource_name):
+            return _resource_span_name(self.name, skill_name, resource_name)
 
     class _RunSkillScriptTool(_TracedSkillTool, adk_skill_toolset.RunSkillScriptTool):
+        """Command execution: a script bundled with the skill runs in the environment."""
+
         def __init__(self, toolset, skill_names, script_paths, commands):
             super().__init__(toolset)
             self.skill_names = skill_names
@@ -528,14 +557,18 @@ def run_skills_reference():
                 command=self.commands,
             )
 
+        def _span_name(self, skill_name, resource_name):
+            return _resource_span_name(self.name, skill_name, resource_name)
+
         def _record_skill_signals(self, span, args, result, error_type, tool_context):
-            # `direct`: the script path is a call argument.
-            span.set_attribute("gen_ai.skill.script.path", args["file_path"])
-            # `direct`: the environment reports the status the script exited with.
-            # Absent when the tool failed before running anything.
+            # `direct`: the environment reports the status the command exited
+            # with. Absent when the tool failed before running anything.
             exit_code = result.get("exit_code") if isinstance(result, dict) else None
             if exit_code is not None:
-                span.set_attribute("gen_ai.skill.script.exit_code", exit_code)
+                span.set_attribute("process.exit.code", exit_code)
+            # `process.executable.*` stay unset: the environment hands the
+            # model's command string to a shell, so the library never resolves a
+            # single executable of its own.
 
     with _suppress_adk_native_telemetry():
         # An explicit workspace, so the path the skills are materialized under is

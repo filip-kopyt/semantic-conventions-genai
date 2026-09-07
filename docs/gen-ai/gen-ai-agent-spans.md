@@ -1087,8 +1087,8 @@ Examples include:
 
 Otherwise, the generic `execute_tool` span applies.
 
-**Span name** SHOULD be `{gen_ai.tool.name} {gen_ai.skill.name}`
-when `gen_ai.skill.name` is available and `{gen_ai.tool.name}`
+**Span name** SHOULD be `execute_tool {gen_ai.tool.name} {gen_ai.skill.name}`
+when `gen_ai.skill.name` is available and `execute_tool {gen_ai.tool.name}`
 otherwise.
 
 **Span kind** SHOULD be `INTERNAL`.
@@ -1254,10 +1254,10 @@ Examples include:
 Otherwise, the generic `execute_tool` span applies.
 
 **Span name** SHOULD be
-`{gen_ai.tool.name} {gen_ai.skill.name} {gen_ai.skill.resource.name}`
+`execute_tool {gen_ai.tool.name} {gen_ai.skill.name} {gen_ai.skill.resource.name}`
 when the skill and resource names are available,
-`{gen_ai.tool.name} {gen_ai.skill.resource.name}` when only the
-resource name is available, and `{gen_ai.tool.name}` otherwise.
+`execute_tool {gen_ai.tool.name} {gen_ai.skill.resource.name}` when only the
+resource name is available, and `execute_tool {gen_ai.tool.name}` otherwise.
 
 The skill name SHOULD NOT be appended by itself.
 
@@ -1442,13 +1442,13 @@ Otherwise, the generic `execute_tool` span applies.
 
 **Span name** SHOULD be:
 
-- `{gen_ai.tool.name} {gen_ai.skill.name} {gen_ai.skill.resource.name}`
+- `execute_tool {gen_ai.tool.name} {gen_ai.skill.name} {gen_ai.skill.resource.name}`
   when the skill and resource names are both available;
-- `{gen_ai.tool.name} {gen_ai.skill.resource.name}` when only the
+- `execute_tool {gen_ai.tool.name} {gen_ai.skill.resource.name}` when only the
   skill resource name is available;
-- `{gen_ai.tool.name} {process.executable.name}` when only the
+- `execute_tool {gen_ai.tool.name} {process.executable.name}` when only the
   executable name is available;
-- `{gen_ai.tool.name}` otherwise.
+- `execute_tool {gen_ai.tool.name}` otherwise.
 
 The skill name SHOULD NOT be appended without the resource name.
 
