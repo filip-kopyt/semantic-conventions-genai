@@ -1436,7 +1436,7 @@ The tool span covers framework processing such as validation, skill
 resolution, approval, hooks, and result handling.
 
 Instrumentations MAY also emit additional spans following the
-[CLI client span conventions](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/cli/cli-spans.md#cli-client-span)
+[CLI client span conventions](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/cli/cli-spans.md#client-caller-spans)
 for each observed command, script, or process execution.
 
 Otherwise, the generic `execute_tool` span applies.
