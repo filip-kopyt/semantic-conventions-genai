@@ -1261,7 +1261,7 @@ script ran and exited non-zero. An execution that never reached the script
 has no `gen_ai.skill.script.exited_with_error`, and neither does one whose
 framework runs the script without reporting the status it exited with. That
 keeps the script's own outcome low-cardinality; the exit code itself is
-recorded on the span as `gen_ai.skill.script.exit_code`.
+recorded on the span as `process.exit.code`.
 
 **Requirement level:** [Recommended](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/general/signal-requirement-level.md).
 
@@ -1273,7 +1273,7 @@ recorded on the span as `gen_ai.skill.script.exit_code`.
 | [`gen_ai.skill.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [2] | string | The name of the [Agent Skill](https://agentskills.io) the operation names. [3] | `code-review`; `pdf-processing` |
 | [`gen_ai.skill.script.exited_with_error`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [4] | boolean | Whether the skill script terminated with a non-zero exit code. [5] | `true` |
 | [`gen_ai.agent.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Human-readable name of the GenAI agent provided by the application. | `Math Tutor`; `Fiction Writer` |
-| [`gen_ai.skill.script.path`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` [6] | string | The path of the skill script the call names, relative to the root of the skill folder. [7] | `scripts/run_checks.py` |
+| [`gen_ai.skill.resource.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` [6] | string | The skill-relative name of the resource accessed or executed by the tool. [7] | `references/review_policy.md`; `assets/report_template.html` |
 
 **[1] `error.type`:** The `error.type` SHOULD match the error code returned by the Generative AI provider or the client library,
 the canonical name of exception that occurred, or another low-cardinality error identifier.
@@ -1285,11 +1285,13 @@ Instrumentations SHOULD document the list of errors they report.
 
 **[4] `gen_ai.skill.script.exited_with_error`:** If the instrumentation can determine the status the script exited with.
 
-**[5] `gen_ai.skill.script.exited_with_error`:** A low-cardinality companion to `gen_ai.skill.script.exit_code`, for use as a metric dimension where the exit code itself would be unbounded.
+**[5] `gen_ai.skill.script.exited_with_error`:** A low-cardinality companion to `process.exit.code`, for use as a metric dimension where the exit code itself would be unbounded.
 
-**[6] `gen_ai.skill.script.path`:** If the path resolves to a script bundled with the skill.
+**[6] `gen_ai.skill.resource.name`:** If the name resolves to a script bundled with the skill.
 
-**[7] `gen_ai.skill.script.path`:** The path the call asked for, recorded whether or not the script ran. An execution that failed before starting the script has `error.type` and no `gen_ai.skill.script.exit_code`.
+**[7] `gen_ai.skill.resource.name`:** This attribute records the logical resource name available from the tool
+call or instrumented library state. It may be a skill-relative path when
+the framework uses paths.
 
 ---
 

@@ -293,7 +293,7 @@ metrics:
       has no `gen_ai.skill.script.exited_with_error`, and neither does one whose
       framework runs the script without reporting the status it exited with. That
       keeps the script's own outcome low-cardinality; the exit code itself is
-      recorded on the span as `gen_ai.skill.script.exit_code`.
+      recorded on the span as `process.exit.code`.
     instrument: counter
     unit: "{execution}"
     stability: development
@@ -304,9 +304,9 @@ metrics:
       - ref: gen_ai.skill.name
         requirement_level:
           conditionally_required: If the name resolves to a skill available to the agent.
-      - ref: gen_ai.skill.script.path
+      - ref: gen_ai.skill.resource.name
         requirement_level:
-          recommended: If the path resolves to a script bundled with the skill.
+          recommended: If the name resolves to a script bundled with the skill.
       - ref: gen_ai.skill.script.exited_with_error
         requirement_level:
           conditionally_required: If the instrumentation can determine the status the script exited with.
