@@ -1138,12 +1138,6 @@ are encouraged to follow this semantic convention for tools invoked by their
 own code and to manually instrument any tool calls that automatic
 instrumentations do not cover.
 
-Frameworks expose [Agent Skills](https://agentskills.io) to the model as tools —
-typically one to load a skill's instructions, one to read a bundled resource, and
-one to run a bundled script. Those executions are `execute_tool` spans like any
-other, qualified by the `gen_ai.skill.*` attributes. Instrumentations SHOULD set
-`gen_ai.skill.*` on the tool execution rather than emit a separate skill span.
-
 **Span name** SHOULD be `execute_tool {gen_ai.tool.name}`.
 
 **Span kind** SHOULD be `INTERNAL`.
