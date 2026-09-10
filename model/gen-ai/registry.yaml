@@ -1051,10 +1051,8 @@ attributes:
     stability: development
   - key: gen_ai.skill.description
     type: string
-    brief: The description of the skill, stating what it does and when to use it.
+    brief: The [description of the Agent Skill](https://agentskills.io/specification#skill-md-format).
     note: |
-      This is the `description` field of the skill's `SKILL.md` frontmatter — the
-      text the agent matches a task against when deciding to load the skill.
 
       > [!Warning]
       > This attribute may contain sensitive information.
