@@ -1072,9 +1072,5 @@ attributes:
   - key: gen_ai.skill.resource.name
     type: string
     brief: The skill-relative name of the resource (script, reference, or asset) being accessed or executed.
-    note: |
-      This attribute records the logical resource name available from the tool
-      call or instrumented library state. It may be a skill-relative path when
-      the framework uses paths.
     examples: ["references/review_policy.md", "assets/report_template.html"]
     stability: development
