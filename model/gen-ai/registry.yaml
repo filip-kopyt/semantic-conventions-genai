@@ -1055,7 +1055,7 @@ attributes:
     stability: development
   - key: gen_ai.skill.source.uri
     type: string
-    brief: The [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986) URI of the source from which the skill was loaded.
+    brief: The source URI for loading the skill.
     note: |
       This SHOULD identify the skill source, not a temporary location where the
       skill was materialized for execution.
