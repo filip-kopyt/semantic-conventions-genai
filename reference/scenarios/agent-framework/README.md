@@ -10,6 +10,6 @@ the model call themselves.
 | --- | --- | --- |
 | inference (`chat`) | Yes — the chat client reports the model call | ✅ Implemented (native) |
 | invoke_agent (internal) | Yes — `Agent.run` | ✅ Implemented (native) |
-| invoke_workflow | Yes — a `WorkflowBuilder` graph run | ❌ Not implemented (the scenario runs one; the native telemetry emits no workflow span) |
+| invoke_workflow | Yes — a `WorkflowBuilder` graph run | ❌ Not implemented |
 | execute_tool | Yes — the framework's tool loop runs the tool | ✅ Implemented (native) |
 | skills | Yes — `SkillsProvider` exposes the skill lifecycle as tools | ✅ Implemented |

@@ -589,6 +589,13 @@ spans:
       are encouraged to follow this semantic convention for tools invoked by their
       own code and to manually instrument any tool calls that automatic
       instrumentations do not cover.
+
+      Though [AgentSkills](https://agentskills.io) are usually executed as tools,
+      due to their specialized nature, instrumentations for agentic frameworks
+      SHOULD follow additional [conventions and models for GenAI agents](/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span).
+      The instrumentations SHOULD distinguish generic tool from specialized ones,
+      using framework specific tool names or heuristics, and
+      they SHOULD NOT record two different spans for one call.
     stability: development
     attributes:
       - ref_group: attributes.gen_ai.error
@@ -956,7 +963,7 @@ span_refinements:
         The skill name SHOULD NOT be appended without the resource name.
     note: |
       This refinement applies when a tool represents command execution,
-      whether or not it is associated with a skill.
+      including the execution of skill's script.
 
       Examples include:
 
@@ -974,9 +981,6 @@ span_refinements:
         dedicated to scripts bundled with skills;
       - [Agno](https://docs.agno.com/skills/overview) `get_skill_script` when
         called with `execute=true`.
-
-      The tool span covers framework processing such as validation, skill
-      resolution, approval, hooks, and result handling.
 
       Instrumentations MAY also emit additional spans following the
       [CLI client span conventions](https://opentelemetry.io/docs/specs/semconv/cli/cli-spans/)
