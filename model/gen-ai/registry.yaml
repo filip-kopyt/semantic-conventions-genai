@@ -1060,8 +1060,6 @@ attributes:
       This SHOULD identify the skill source, not a temporary location where the
       skill was materialized for execution.
 
-      For file-based skills, this is the URI of the skill directory. A local
-      source path MAY be converted to a `file` URI.
 
       > [!WARNING]
       > This attribute may contain sensitive information.
