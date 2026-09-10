@@ -1041,7 +1041,7 @@ attributes:
     stability: development
   - key: gen_ai.skill.name
     type: string
-    brief: The name of the [Agent Skill](https://agentskills.io) the operation names.
+    brief: The name of the [Agent Skill](https://agentskills.io/specification#skill-md-format).
     note: >
       The name the call asked for, recorded whether or not it resolves to a
       skill. Where it resolves, this is the `name` field of that skill's
