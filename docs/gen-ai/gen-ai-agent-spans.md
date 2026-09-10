@@ -1053,14 +1053,14 @@ and SHOULD be provided **at span creation time** (if provided at all):
 ## Execute tool span
 
 If you are using some tools in your agent, refer to
-[Execute Tool Span](/docs/gen-ai-spans.md#execute-tool-span) and refinements below.
+[Execute Tool Span](/docs/gen-ai/gen-ai-spans.md#execute-tool-span) and refinements below.
 
 ### Agent skills
 
 An [Agent Skill](https://agentskills.io) is a folder holding a `SKILL.md` file —
 metadata (`name`, `description`) plus instructions — and, optionally, bundled
 `references/`, `assets/`, and `scripts/`. When a tool is used to interact with a skill,
-instrumentations SHOULD refine [Execute Tool span](/docs/gen-ai-spans.md#execute-tool-span)
+instrumentations SHOULD refine [Execute Tool span](/docs/gen-ai/gen-ai-spans.md#execute-tool-span)
 as described below.
 
 ### Load skill span
