@@ -258,12 +258,11 @@ When the attribute is recorded on events, it MUST be recorded in structured form
 
 **[26] `gen_ai.skill.description`:**
 
-> [!Warning]
+> [!WARNING]
 > This attribute may contain sensitive information.
 
 **[27] `gen_ai.skill.source.uri`:** This SHOULD identify the skill source, not a temporary location where the
 skill was materialized for execution.
-
 
 > [!WARNING]
 > This attribute may contain sensitive information.

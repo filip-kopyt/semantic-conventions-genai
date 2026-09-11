@@ -1138,12 +1138,12 @@ are encouraged to follow this semantic convention for tools invoked by their
 own code and to manually instrument any tool calls that automatic
 instrumentations do not cover.
 
-Though [AgentSkills](https://agentskills.io) are usually executed as tools,
-due to their specialized nature, instrumentations for agentic frameworks
-SHOULD follow additional [conventions and models for GenAI agents](/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span).
-The instrumentations SHOULD distinguish generic tool from specialized ones,
-using framework specific tool names or heuristics, and
-they SHOULD NOT record two different spans for one call.
+Some tools are specialized, such as [Agent Skills](https://agentskills.io)
+that agentic frameworks expose as tools. Instrumentations SHOULD distinguish
+generic tools from specialized ones using framework-specific tool names or
+other heuristics and record the applicable
+[refinement](/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span).
+They SHOULD NOT record two different spans for one call.
 
 **Span name** SHOULD be `execute_tool {gen_ai.tool.name}`.
 
