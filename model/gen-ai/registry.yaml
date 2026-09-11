@@ -1048,8 +1048,7 @@ attributes:
     type: string
     brief: The [description of the Agent Skill](https://agentskills.io/specification#skill-md-format).
     note: |
-
-      > [!Warning]
+      > [!WARNING]
       > This attribute may contain sensitive information.
     examples: ["Review a changelist against the team's review policy."]
     stability: development
@@ -1059,7 +1058,6 @@ attributes:
     note: |
       This SHOULD identify the skill source, not a temporary location where the
       skill was materialized for execution.
-
 
       > [!WARNING]
       > This attribute may contain sensitive information.

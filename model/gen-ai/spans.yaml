@@ -590,12 +590,12 @@ spans:
       own code and to manually instrument any tool calls that automatic
       instrumentations do not cover.
 
-      Though [AgentSkills](https://agentskills.io) are usually executed as tools,
-      due to their specialized nature, instrumentations for agentic frameworks
-      SHOULD follow additional [conventions and models for GenAI agents](/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span).
-      The instrumentations SHOULD distinguish generic tool from specialized ones,
-      using framework specific tool names or heuristics, and
-      they SHOULD NOT record two different spans for one call.
+      Some tools are specialized, such as [Agent Skills](https://agentskills.io)
+      that agentic frameworks expose as tools. Instrumentations SHOULD distinguish
+      generic tools from specialized ones using framework-specific tool names or
+      other heuristics and record the applicable
+      [refinement](/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span).
+      They SHOULD NOT record two different spans for one call.
     stability: development
     attributes:
       - ref_group: attributes.gen_ai.error
@@ -889,8 +889,6 @@ span_refinements:
         `skills`;
       - [Agno](https://docs.agno.com/skills/overview)
         `get_skill_instructions`.
-
-      Otherwise, the generic `execute_tool` span applies.
     stability: development
     attributes:
       - ref: gen_ai.skill.name
@@ -926,8 +924,6 @@ span_refinements:
       - [Agno](https://docs.agno.com/skills/overview)
         `get_skill_reference` and `get_skill_script` when called with
         `execute=false`.
-
-      Otherwise, the generic `execute_tool` span applies.
     stability: development
     attributes:
       - ref: gen_ai.skill.name
@@ -985,8 +981,6 @@ span_refinements:
       Instrumentations MAY also emit additional spans following the
       [CLI client span conventions](https://opentelemetry.io/docs/specs/semconv/cli/cli-spans/)
       for each observed command, script, or process execution.
-
-      Otherwise, the generic `execute_tool` span applies.
     stability: development
     attributes:
       - ref: gen_ai.skill.name

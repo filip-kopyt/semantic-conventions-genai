@@ -1086,8 +1086,6 @@ Examples include:
 - [Agno](https://docs.agno.com/skills/overview)
   `get_skill_instructions`.
 
-Otherwise, the generic `execute_tool` span applies.
-
 **Span name** SHOULD be `execute_tool {gen_ai.tool.name} {gen_ai.skill.name}`
 when `gen_ai.skill.name` is available and `execute_tool {gen_ai.tool.name}`
 otherwise.
@@ -1123,12 +1121,11 @@ Instrumentations SHOULD document the list of errors they report.
 
 **[3] `gen_ai.skill.description`:**
 
-> [!Warning]
+> [!WARNING]
 > This attribute may contain sensitive information.
 
 **[4] `gen_ai.skill.source.uri`:** This SHOULD identify the skill source, not a temporary location where the
 skill was materialized for execution.
-
 
 > [!WARNING]
 > This attribute may contain sensitive information.
@@ -1242,8 +1239,6 @@ Examples include:
   `get_skill_reference` and `get_skill_script` when called with
   `execute=false`.
 
-Otherwise, the generic `execute_tool` span applies.
-
 **Span name** SHOULD be
 `execute_tool {gen_ai.tool.name} {gen_ai.skill.name} {gen_ai.skill.resource.name}`
 when the skill and resource names are available,
@@ -1284,12 +1279,11 @@ Instrumentations SHOULD document the list of errors they report.
 
 **[3] `gen_ai.skill.description`:**
 
-> [!Warning]
+> [!WARNING]
 > This attribute may contain sensitive information.
 
 **[4] `gen_ai.skill.source.uri`:** This SHOULD identify the skill source, not a temporary location where the
 skill was materialized for execution.
-
 
 > [!WARNING]
 > This attribute may contain sensitive information.
@@ -1418,8 +1412,6 @@ Instrumentations MAY also emit additional spans following the
 [CLI client span conventions](https://opentelemetry.io/docs/specs/semconv/cli/cli-spans/)
 for each observed command, script, or process execution.
 
-Otherwise, the generic `execute_tool` span applies.
-
 **Span name** SHOULD be:
 
 - `execute_tool {gen_ai.tool.name} {gen_ai.skill.name} {gen_ai.skill.resource.name}`
@@ -1477,14 +1469,13 @@ Instrumentations SHOULD document the list of errors they report.
 
 **[8] `gen_ai.skill.description`:**
 
-> [!Warning]
+> [!WARNING]
 > This attribute may contain sensitive information.
 
 **[9] `gen_ai.skill.source.uri`:** If the command is associated with a skill and its source URI is available.
 
 **[10] `gen_ai.skill.source.uri`:** This SHOULD identify the skill source, not a temporary location where the
 skill was materialized for execution.
-
 
 > [!WARNING]
 > This attribute may contain sensitive information.
