@@ -589,6 +589,13 @@ spans:
       are encouraged to follow this semantic convention for tools invoked by their
       own code and to manually instrument any tool calls that automatic
       instrumentations do not cover.
+
+      Some tools are specialized, such as [Agent Skills](https://agentskills.io)
+      that agentic frameworks expose as tools. Instrumentations SHOULD distinguish
+      generic tools from specialized ones using framework-specific tool names or
+      other heuristics and record the applicable
+      [refinement](/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span).
+      They SHOULD NOT record two different spans for one call.
     stability: development
     attributes:
       - ref_group: attributes.gen_ai.error
@@ -605,6 +612,8 @@ spans:
         requirement_level:
           recommended: If available.
       - ref: gen_ai.tool.type
+        sampling_relevant: true
+      - ref: gen_ai.agent.name
         sampling_relevant: true
       - ref: gen_ai.tool.call.arguments
         requirement_level: opt_in
@@ -693,6 +702,7 @@ spans:
         brief: The human-readable name of the agent performing the planning.
         requirement_level:
           conditionally_required: When available.
+        sampling_relevant: true
 
 span_refinements:
   - id: openai.inference.client
@@ -879,8 +889,6 @@ span_refinements:
         `skills`;
       - [Agno](https://docs.agno.com/skills/overview)
         `get_skill_instructions`.
-
-      Otherwise, the generic `execute_tool` span applies.
     stability: development
     attributes:
       - ref: gen_ai.skill.name
@@ -916,8 +924,6 @@ span_refinements:
       - [Agno](https://docs.agno.com/skills/overview)
         `get_skill_reference` and `get_skill_script` when called with
         `execute=false`.
-
-      Otherwise, the generic `execute_tool` span applies.
     stability: development
     attributes:
       - ref: gen_ai.skill.name
@@ -953,7 +959,7 @@ span_refinements:
         The skill name SHOULD NOT be appended without the resource name.
     note: |
       This refinement applies when a tool represents command execution,
-      whether or not it is associated with a skill.
+      including the execution of skill's script.
 
       Examples include:
 
@@ -972,14 +978,9 @@ span_refinements:
       - [Agno](https://docs.agno.com/skills/overview) `get_skill_script` when
         called with `execute=true`.
 
-      The tool span covers framework processing such as validation, skill
-      resolution, approval, hooks, and result handling.
-
       Instrumentations MAY also emit additional spans following the
-      [CLI client span conventions](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/cli/cli-spans.md#client-caller-spans)
+      [CLI client span conventions](https://opentelemetry.io/docs/specs/semconv/cli/cli-spans/)
       for each observed command, script, or process execution.
-
-      Otherwise, the generic `execute_tool` span applies.
     stability: development
     attributes:
       - ref: gen_ai.skill.name

@@ -1218,7 +1218,7 @@ duration histogram.
 | Key | Stability | [Requirement Level](https://opentelemetry.io/docs/specs/semconv/general/attribute-requirement-level/) | Value Type | Description | Example Values |
 | --- | --- | --- | --- | --- | --- |
 | [`error.type`](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/registry/attributes/error.md) | ![Stable](https://img.shields.io/badge/-stable-lightgreen) | `Conditionally Required` If the operation ended in an error. | string | Describes a class of error the operation ended with. [1] | `timeout`; `java.net.UnknownHostException`; `server_certificate_invalid`; `500` |
-| [`gen_ai.skill.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [2] | string | The name of the [Agent Skill](https://agentskills.io) the operation names. [3] | `code-review`; `pdf-processing` |
+| [`gen_ai.skill.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [2] | string | The name of the [Agent Skill](https://agentskills.io/specification#skill-md-format). | `code-review`; `pdf-processing` |
 | [`gen_ai.agent.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Human-readable name of the GenAI agent provided by the application. | `Math Tutor`; `Fiction Writer` |
 
 **[1] `error.type`:** The `error.type` SHOULD match the error code returned by the Generative AI provider or the client library,
@@ -1226,8 +1226,6 @@ the canonical name of exception that occurred, or another low-cardinality error 
 Instrumentations SHOULD document the list of errors they report.
 
 **[2] `gen_ai.skill.name`:** If the name resolves to a skill available to the agent.
-
-**[3] `gen_ai.skill.name`:** The name the call asked for, recorded whether or not it resolves to a skill. Where it resolves, this is the `name` field of that skill's `SKILL.md` frontmatter, which the specification requires to be unique within the set of skills available to the agent.
 
 ---
 
@@ -1270,10 +1268,10 @@ recorded on the span as `process.exit.code`.
 | Key | Stability | [Requirement Level](https://opentelemetry.io/docs/specs/semconv/general/attribute-requirement-level/) | Value Type | Description | Example Values |
 | --- | --- | --- | --- | --- | --- |
 | [`error.type`](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/registry/attributes/error.md) | ![Stable](https://img.shields.io/badge/-stable-lightgreen) | `Conditionally Required` If the operation ended in an error. | string | Describes a class of error the operation ended with. [1] | `timeout`; `java.net.UnknownHostException`; `server_certificate_invalid`; `500` |
-| [`gen_ai.skill.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [2] | string | The name of the [Agent Skill](https://agentskills.io) the operation names. [3] | `code-review`; `pdf-processing` |
-| [`gen_ai.skill.script.exited_with_error`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [4] | boolean | Whether the skill script terminated with a non-zero exit code. [5] | `true` |
+| [`gen_ai.skill.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [2] | string | The name of the [Agent Skill](https://agentskills.io/specification#skill-md-format). | `code-review`; `pdf-processing` |
+| [`gen_ai.skill.script.exited_with_error`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Conditionally Required` [3] | boolean | Whether the skill script terminated with a non-zero exit code. [4] | `true` |
 | [`gen_ai.agent.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Human-readable name of the GenAI agent provided by the application. | `Math Tutor`; `Fiction Writer` |
-| [`gen_ai.skill.resource.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` [6] | string | The skill-relative name of the resource accessed or executed by the tool. [7] | `references/review_policy.md`; `assets/report_template.html` |
+| [`gen_ai.skill.resource.name`](/docs/registry/attributes/gen-ai.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` [5] | string | The skill-relative name of the resource (script, reference, or asset) being accessed or executed. | `references/review_policy.md`; `assets/report_template.html` |
 
 **[1] `error.type`:** The `error.type` SHOULD match the error code returned by the Generative AI provider or the client library,
 the canonical name of exception that occurred, or another low-cardinality error identifier.
@@ -1281,17 +1279,11 @@ Instrumentations SHOULD document the list of errors they report.
 
 **[2] `gen_ai.skill.name`:** If the name resolves to a skill available to the agent.
 
-**[3] `gen_ai.skill.name`:** The name the call asked for, recorded whether or not it resolves to a skill. Where it resolves, this is the `name` field of that skill's `SKILL.md` frontmatter, which the specification requires to be unique within the set of skills available to the agent.
+**[3] `gen_ai.skill.script.exited_with_error`:** If the instrumentation can determine the status the script exited with.
 
-**[4] `gen_ai.skill.script.exited_with_error`:** If the instrumentation can determine the status the script exited with.
+**[4] `gen_ai.skill.script.exited_with_error`:** A low-cardinality companion to `process.exit.code`, for use as a metric dimension where the exit code itself would be unbounded.
 
-**[5] `gen_ai.skill.script.exited_with_error`:** A low-cardinality companion to `process.exit.code`, for use as a metric dimension where the exit code itself would be unbounded.
-
-**[6] `gen_ai.skill.resource.name`:** If the name resolves to a script bundled with the skill.
-
-**[7] `gen_ai.skill.resource.name`:** This attribute records the logical resource name available from the tool
-call or instrumented library state. It may be a skill-relative path when
-the framework uses paths.
+**[5] `gen_ai.skill.resource.name`:** If the name resolves to a script bundled with the skill.
 
 ---
 
