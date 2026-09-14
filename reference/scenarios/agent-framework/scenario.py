@@ -5,6 +5,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 from typing import Annotated
 
 from opentelemetry import trace
@@ -27,20 +28,15 @@ SKILL_TOOL_ENUMS = {
 
 _reference_meter = reference_meter()
 
-_skill_loads = _reference_meter.create_counter(
-    "gen_ai.skill.loads",
-    unit="{load}",
-    description="The number of times a skill was loaded.",
+_execute_tool_duration = _reference_meter.create_histogram(
+    "gen_ai.execute_tool.duration",
+    unit="s",
+    description="The duration of a single tool execution.",
 )
-_invoke_agent_skill_loads = _reference_meter.create_histogram(
-    "gen_ai.invoke_agent.skill.loads",
-    unit="{skill}",
-    description="The number of skills a GenAI agent activates during a single invocation.",
-)
-_skill_script_executions = _reference_meter.create_counter(
-    "gen_ai.skill.script.executions",
-    unit="{execution}",
-    description="The number of times a skill's script was executed.",
+_invoke_agent_tool_calls = _reference_meter.create_histogram(
+    "gen_ai.invoke_agent.tool_calls",
+    unit="{tool_call}",
+    description="The number of tool calls a GenAI agent makes during a single invocation.",
 )
 
 
@@ -219,8 +215,9 @@ async def run_skills():
     the model as three tools — `load_skill`, `read_skill_resource` and
     `run_skill_script` — so the framework's own tool loop runs each stage and
     its native `execute_tool` span is where the skill attributes belong. The
-    reference stamps them onto that span from inside the tool call, the same way
-    a framework's own instrumentation would.
+    reference stamps them onto that span from inside the tool call, and records
+    the tool execution's duration over the same call, the same way a framework's
+    own instrumentation would.
     """
     from agent_framework import Agent, SkillsProvider
     from agent_framework.observability import enable_sensitive_telemetry
@@ -229,7 +226,7 @@ async def run_skills():
     print("  [skills] SkillsProvider skill lifecycle (reference implementation)")
 
     enable_sensitive_telemetry(force=True)
-    activated: list[str] = []
+    tool_calls = {"count": 0}
 
     def run_script(skill, script, args=None):
         """Application-supplied runner for file-based skill scripts.
@@ -249,7 +246,7 @@ async def run_skills():
         return completed.stdout.strip()
 
     class _InstrumentedSkillsProvider(SkillsProvider):
-        """Adds `gen_ai.skill.*` to the framework's own `execute_tool` span.
+        """Adds `gen_ai.skill.*` to the framework's tool-execution telemetry.
 
         Overriding `_create_tools` is the provider's own extension point for the
         tool set it hands the model. `stage_tool` narrows that set to one tool
@@ -290,21 +287,19 @@ async def run_skills():
                     elif resource_name:
                         parts = ("execute_tool", tool_name, skill_name, resource_name)
                         span.update_name(" ".join(p for p in parts if p))
+                    started = time.perf_counter()
                     result = await func(**kwargs)
-                    # The span carries the name the call asked for either way; the
-                    # metrics take it only once the provider has resolved it to a
-                    # skill, so a name the model invented cannot enter the dimension.
-                    attributes = {"gen_ai.agent.name": "SkillAgent"}
+                    elapsed = time.perf_counter() - started
+                    tool_calls["count"] += 1
+                    attributes = {"gen_ai.tool.name": tool_name, "gen_ai.tool.type": "function"}
                     if skill is not None:
                         attributes["gen_ai.skill.name"] = skill_name
-                    if tool_name == SkillsProvider.LOAD_SKILL_TOOL_NAME:
-                        if skill is not None:
-                            activated.append(skill_name)
-                        _skill_loads.add(1, attributes)
-                    if tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME:
-                        if skill is not None and skill.get_script(kwargs["script_name"]) is not None:
-                            attributes["gen_ai.skill.resource.name"] = kwargs["script_name"]
-                        _skill_script_executions.add(1, attributes)
+                    if (tool_name == SkillsProvider.RUN_SKILL_SCRIPT_TOOL_NAME
+                        and skill is not None
+                        and skill.get_script(kwargs["script_name"]) is not None
+                    ):
+                        attributes["gen_ai.skill.resource.name"] = kwargs["script_name"]
+                    _execute_tool_duration.record(elapsed, attributes)
                     return result
 
                 return wrapper
@@ -341,7 +336,7 @@ async def run_skills():
     ]
     for prompt, stage_tool in stages:
         provider.stage_tool = stage_tool
-        activated.clear()
+        tool_calls["count"] = 0
         async with Agent(
             client=OpenAIChatClient(model="gpt-4o-mini", base_url=MOCK_BASE_URL, api_key="mock-key"),
             id="skill-agent",
@@ -352,8 +347,7 @@ async def run_skills():
         ) as agent:
             result = await agent.run(prompt)
             print(f"    -> {result.text[:60]}")
-        # Skills this invocation activated
-        _invoke_agent_skill_loads.record(len(activated), {"gen_ai.agent.name": "SkillAgent"})
+            _invoke_agent_tool_calls.record(tool_calls["count"], {"gen_ai.agent.name": agent.name})
 
 
 def main():
