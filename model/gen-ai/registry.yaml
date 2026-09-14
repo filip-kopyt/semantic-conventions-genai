@@ -1072,11 +1072,3 @@ attributes:
     brief: The skill-relative name of the resource (script, reference, or asset) being accessed or executed.
     examples: ["references/review_policy.md", "assets/report_template.html"]
     stability: development
-  - key: gen_ai.skill.script.exited_with_error
-    type: boolean
-    brief: Whether the skill script terminated with a non-zero exit code.
-    note: >
-      A low-cardinality companion to `process.exit.code`, for use as a
-      metric dimension where the exit code itself would be unbounded.
-    examples: [true]
-    stability: development
