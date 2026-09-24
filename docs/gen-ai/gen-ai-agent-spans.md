@@ -1081,7 +1081,7 @@ Examples include:
 - [Google ADK](https://adk.dev/skills/) `load_skill`;
 - [OpenAI Agents](https://openai.github.io/openai-agents-python/sandbox/guide/)
   `load_skill` for a lazy skill source;
-- [Strands Agents](https://strandsagents.com/docs/user-guide/concepts/plugins/skills/)
+- [Strands Agents](https://strandsagents.com/docs/user-guide/sdk/plugins/skills/)
   `skills`;
 - [Agno](https://docs.agno.com/skills/overview)
   `get_skill_instructions`.
@@ -1438,7 +1438,7 @@ Examples include:
   materialized skills;
 - [LangChain Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview)
   sandbox `execute`, which runs both general commands and skill scripts;
-- [Strands Agents](https://strandsagents.com/docs/user-guide/concepts/plugins/skills/)
+- [Strands Agents](https://strandsagents.com/docs/user-guide/sdk/plugins/skills/)
   `shell`, which is used for both general commands and bundled skill
   scripts;
 - [Anthropic](https://platform.claude.com/docs/en/agents-and-tools/tool-use/bash-tool)
